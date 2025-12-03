@@ -1,0 +1,368 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+    <title>EduPlay - Educational Platform</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; }
+        :root { --primary: #2563eb; --secondary: #7c3aed; --accent: #f59e0b; --dark: #0f172a; --darker: #020617; --light: #f8fafc; --gray: #64748b; --success: #10b981; --danger: #ef4444; }
+        body { background: linear-gradient(135deg, var(--darker), var(--dark), #1e293b); color: var(--light); min-height: 100vh; }
+        .container { max-width: 1400px; margin: 0 auto; padding: 0 15px; }
+        nav { background: rgba(15, 23, 42, 0.95); backdrop-filter: blur(10px); padding: 12px 0; position: sticky; top: 0; z-index: 100; border-bottom: 1px solid rgba(255,255,255,0.1); }
+        .nav-container { display: flex; justify-content: space-between; align-items: center; gap: 20px; }
+        .logo { display: flex; align-items: center; gap: 10px; }
+        .logo i { font-size: 1.6rem; color: var(--primary); }
+        .logo h1 { font-size: 1.5rem; background: linear-gradient(135deg, var(--primary), var(--secondary)); -webkit-background-clip: text; -webkit-text-fill-color: transparent; }
+        .nav-links { display: flex; gap: 5px; align-items: center; }
+        .nav-link { color: var(--light); text-decoration: none; font-weight: 500; padding: 8px 16px; border-radius: 8px; transition: all .3s; cursor: pointer; }
+        .nav-link.active { background: linear-gradient(135deg, var(--primary), var(--secondary)); }
+        .nav-link:hover:not(.active) { background: rgba(255,255,255,0.1); }
+        .live-indicator { position: absolute; top: -3px; right: -3px; width: 8px; height: 8px; background: var(--danger); border-radius: 50%; animation: pulse 1.5s infinite; }
+        .section { display: none; padding: 30px 15px; }
+        .section.active { display: block; }
+        .section-title { font-size: 1.5rem; margin-bottom: 20px; text-align: center; }
+        .section-title i { color: var(--primary); margin-right: 10px; }
+        
+        /* Hero */
+        .hero-section { padding: 40px 15px; text-align: center; }
+        .hero-title { font-size: 2rem; margin-bottom: 15px; background: linear-gradient(135deg, var(--primary), var(--secondary), var(--accent)); -webkit-background-clip: text; -webkit-text-fill-color: transparent; }
+        .hero-subtitle { color: #cbd5e1; margin-bottom: 20px; }
+        
+        /* Cards */
+        .card-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(300px, 1fr)); gap: 20px; }
+        .card { background: rgba(255,255,255,0.05); border-radius: 12px; padding: 20px; border: 1px solid rgba(255,255,255,0.1); transition: all 0.3s; }
+        .card:hover { transform: translateY(-5px); background: rgba(255,255,255,0.08); }
+        .card h3 { font-size: 1.2rem; margin-bottom: 10px; color: var(--light); }
+        .card p { color: #94a3b8; font-size: 0.9rem; margin-bottom: 10px; }
+        .card .meta { display: flex; gap: 15px; font-size: 0.8rem; color: var(--gray); }
+        
+        /* Video Player */
+        .player-container { background: #000; border-radius: 12px; overflow: hidden; margin-bottom: 20px; }
+        #video-frame { width: 100%; height: 400px; border: none; }
+        .player-placeholder { width: 100%; height: 400px; background: linear-gradient(135deg, #1e293b, #334155); display: flex; align-items: center; justify-content: center; color: #94a3b8; flex-direction: column; }
+        .player-placeholder i { font-size: 3rem; margin-bottom: 15px; color: var(--primary); }
+        
+        /* Playlist */
+        .playlist-tabs { display: flex; gap: 10px; margin-bottom: 20px; flex-wrap: wrap; }
+        .playlist-tab { padding: 10px 20px; background: rgba(255,255,255,0.08); border-radius: 8px; cursor: pointer; transition: all 0.3s; }
+        .playlist-tab.active { background: linear-gradient(135deg, var(--primary), var(--secondary)); }
+        .playlist-tab:hover:not(.active) { background: rgba(255,255,255,0.12); }
+        .playlist { max-height: 400px; overflow-y: auto; }
+        .playlist-item { display: flex; gap: 15px; padding: 15px; background: rgba(255,255,255,0.05); border-radius: 8px; margin-bottom: 10px; cursor: pointer; transition: all 0.3s; }
+        .playlist-item:hover { background: rgba(255,255,255,0.1); }
+        .playlist-item.active { background: rgba(37,99,235,0.2); border-left: 3px solid var(--primary); }
+        .playlist-item img { width: 120px; height: 68px; object-fit: cover; border-radius: 6px; }
+        .playlist-item .info { flex: 1; }
+        .playlist-item .title { font-weight: 600; margin-bottom: 5px; }
+        .playlist-item .duration { font-size: 0.8rem; color: var(--gray); }
+        
+        /* Routine */
+        .routine-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(180px, 1fr)); gap: 15px; }
+        .routine-day { background: rgba(255,255,255,0.05); border-radius: 10px; padding: 20px; text-align: center; cursor: pointer; transition: all 0.3s; }
+        .routine-day:hover { background: rgba(255,255,255,0.1); transform: translateY(-3px); }
+        .day-name { font-size: 1.1rem; font-weight: 600; color: var(--primary); margin-bottom: 10px; }
+        .class-time { color: #cbd5e1; font-size: 0.9rem; margin-bottom: 5px; }
+        .class-subject { color: var(--accent); font-weight: 500; }
+        .class-teacher { color: #94a3b8; font-size: 0.8rem; margin-top: 5px; }
+        
+        /* Live Class */
+        .live-class-card { background: rgba(255,255,255,0.05); border: 2px solid var(--danger); border-radius: 12px; padding: 25px; text-align: center; position: relative; }
+        .live-badge { position: absolute; top: -12px; left: 50%; transform: translateX(-50%); background: var(--danger); padding: 5px 20px; border-radius: 20px; font-weight: 600; font-size: 0.8rem; animation: pulse 1.5s infinite; }
+        .zoom-btn { display: inline-block; margin-top: 15px; padding: 12px 25px; background: linear-gradient(135deg, var(--primary), var(--secondary)); color: white; border-radius: 8px; text-decoration: none; font-weight: 600; transition: all 0.3s; }
+        .zoom-btn:hover { transform: translateY(-2px); box-shadow: 0 5px 20px rgba(37,99,235,0.4); }
+        
+        /* Button */
+        .btn { padding: 10px 20px; border-radius: 8px; font-weight: 600; cursor: pointer; transition: all 0.3s; border: none; }
+        .btn-primary { background: linear-gradient(135deg, var(--primary), var(--secondary)); color: white; }
+        .btn:hover { transform: translateY(-2px); }
+        
+        /* Footer */
+        footer { text-align: center; padding: 25px; color: #94a3b8; border-top: 1px solid rgba(255,255,255,0.1); margin-top: 50px; }
+        
+        /* Loading */
+        .loading { text-align: center; padding: 40px; color: #94a3b8; }
+        .loading i { font-size: 2rem; animation: spin 1s linear infinite; }
+        @keyframes spin { 100% { transform: rotate(360deg); } }
+        @keyframes pulse { 0%, 100% { opacity: 1; } 50% { opacity: 0.5; } }
+        
+        /* Empty State */
+        .empty-state { text-align: center; padding: 50px; color: #94a3b8; }
+        .empty-state i { font-size: 3rem; margin-bottom: 15px; opacity: 0.5; }
+        
+        @media (max-width: 768px) {
+            .nav-links { display: none; }
+            #video-frame, .player-placeholder { height: 250px; }
+            .playlist-item { flex-direction: column; }
+            .playlist-item img { width: 100%; height: 150px; }
+        }
+    </style>
+</head>
+<body>
+    <nav>
+        <div class="container nav-container">
+            <div class="logo">
+                <i class="fas fa-graduation-cap"></i>
+                <h1>EduPlay</h1>
+            </div>
+            <div class="nav-links">
+                <a class="nav-link active" data-section="home">Home</a>
+                <a class="nav-link" data-section="classes">Classes</a>
+                <a class="nav-link" data-section="live-class" style="position:relative;">
+                    Live Class
+                    <span class="live-indicator"></span>
+                </a>
+            </div>
+        </div>
+    </nav>
+
+    <!-- Home Section -->
+    <section id="home" class="section active">
+        <div class="container">
+            <div class="hero-section">
+                <h1 class="hero-title">Welcome to EduPlay</h1>
+                <p class="hero-subtitle">Access quality education from anywhere, anytime</p>
+            </div>
+            
+            <h2 class="section-title"><i class="fas fa-calendar-alt"></i> Class Routine</h2>
+            <div id="routine-container" class="routine-grid">
+                <div class="loading"><i class="fas fa-spinner"></i><p>Loading routine...</p></div>
+            </div>
+        </div>
+    </section>
+
+    <!-- Classes Section -->
+    <section id="classes" class="section">
+        <div class="container">
+            <h2 class="section-title"><i class="fas fa-play-circle"></i> Video Classes</h2>
+            
+            <div style="display: flex; gap: 30px; flex-wrap: wrap;">
+                <div style="flex: 2; min-width: 300px;">
+                    <div class="player-container">
+                        <div class="player-placeholder" id="player-placeholder">
+                            <i class="fas fa-play-circle"></i>
+                            <p>Select a video to play</p>
+                        </div>
+                        <iframe id="video-frame" style="display:none;" allowfullscreen></iframe>
+                    </div>
+                    <div id="video-info" style="display:none;">
+                        <h3 id="video-title" style="margin-bottom:10px;"></h3>
+                        <p id="video-description" style="color:#94a3b8;"></p>
+                    </div>
+                </div>
+                
+                <div style="flex: 1; min-width: 300px;">
+                    <div id="playlist-tabs" class="playlist-tabs"></div>
+                    <div id="playlist-container" class="playlist">
+                        <div class="loading"><i class="fas fa-spinner"></i><p>Loading videos...</p></div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- Live Class Section -->
+    <section id="live-class" class="section">
+        <div class="container">
+            <h2 class="section-title"><i class="fas fa-broadcast-tower"></i> Live Classes</h2>
+            <div id="live-classes-container">
+                <div class="loading"><i class="fas fa-spinner"></i><p>Loading live classes...</p></div>
+            </div>
+        </div>
+    </section>
+
+    <footer>
+        <div class="container">
+            <p>© 2024 EduPlay - Educational Platform | Made with <i class="fas fa-heart" style="color:#ef4444;"></i></p>
+        </div>
+    </footer>
+
+    <script>
+    // ========== SUPABASE CONFIG ==========
+    const SUPABASE_URL = 'https://upkrsamsrjjmmuizvgoa.supabase.co';
+    const SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InVwa3JzYW1zcmpqbW11aXp2Z29hIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjI4NjU0OTQsImV4cCI6MjA3ODQ0MTQ5NH0.aZjKlFSwLCkjzKHJhxJUOHDBUxe9BQYOdUO_dzNK_-4';
+    
+    const { createClient } = supabase;
+    const db = createClient(SUPABASE_URL, SUPABASE_KEY);
+
+    // ========== NAVIGATION ==========
+    document.querySelectorAll('.nav-link').forEach(link => {
+        link.addEventListener('click', function() {
+            document.querySelectorAll('.nav-link').forEach(l => l.classList.remove('active'));
+            this.classList.add('active');
+            document.querySelectorAll('.section').forEach(s => s.classList.remove('active'));
+            document.getElementById(this.dataset.section).classList.add('active');
+        });
+    });
+
+    // ========== FETCH DATA ==========
+    let allVideos = [];
+    let categories = {};
+
+    async function fetchVideos() {
+        const { data, error } = await db.from('videos').select('*').order('order_index');
+        if (error) { console.error('Videos error:', error); return []; }
+        return data || [];
+    }
+
+    async function fetchLiveClasses() {
+        const { data, error } = await db.from('live_classes').select('*').order('scheduled_at');
+        if (error) { console.error('Live classes error:', error); return []; }
+        return data || [];
+    }
+
+    async function fetchRoutine() {
+        const { data, error } = await db.from('class_routine').select('*').order('day_name');
+        if (error) { console.error('Routine error:', error); return []; }
+        return data || [];
+    }
+
+    // ========== RENDER FUNCTIONS ==========
+    function getYouTubeId(url) {
+        const match = url.match(/(?:youtu\.be\/|youtube\.com\/(?:embed\/|v\/|watch\?v=|watch\?.+&v=))([^&?\s]+)/);
+        return match ? match[1] : null;
+    }
+
+    function renderRoutine(routines) {
+        const container = document.getElementById('routine-container');
+        if (!routines.length) {
+            container.innerHTML = '<div class="empty-state"><i class="fas fa-calendar-times"></i><p>No routine available</p></div>';
+            return;
+        }
+        
+        const dayOrder = ['Saturday', 'Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday'];
+        routines.sort((a, b) => dayOrder.indexOf(a.day_name) - dayOrder.indexOf(b.day_name));
+        
+        container.innerHTML = routines.map(r => `
+            <div class="routine-day" ${r.zoom_link ? `onclick="window.open('${r.zoom_link}', '_blank')"` : ''}>
+                <div class="day-name">${r.day_name}</div>
+                <div class="class-time">${r.class_time}</div>
+                <div class="class-subject">${r.subject}</div>
+                ${r.teacher ? `<div class="class-teacher">${r.teacher}</div>` : ''}
+            </div>
+        `).join('');
+    }
+
+    function renderPlaylistTabs() {
+        const tabsContainer = document.getElementById('playlist-tabs');
+        const cats = Object.keys(categories);
+        if (!cats.length) return;
+        
+        tabsContainer.innerHTML = cats.map((cat, i) => 
+            `<div class="playlist-tab ${i === 0 ? 'active' : ''}" data-category="${cat}">${cat}</div>`
+        ).join('');
+        
+        tabsContainer.querySelectorAll('.playlist-tab').forEach(tab => {
+            tab.addEventListener('click', function() {
+                tabsContainer.querySelectorAll('.playlist-tab').forEach(t => t.classList.remove('active'));
+                this.classList.add('active');
+                renderPlaylist(this.dataset.category);
+            });
+        });
+        
+        if (cats.length > 0) renderPlaylist(cats[0]);
+    }
+
+    function renderPlaylist(category) {
+        const container = document.getElementById('playlist-container');
+        const videos = categories[category] || [];
+        
+        if (!videos.length) {
+            container.innerHTML = '<div class="empty-state"><i class="fas fa-video-slash"></i><p>No videos in this category</p></div>';
+            return;
+        }
+        
+        container.innerHTML = videos.map(v => {
+            const videoId = getYouTubeId(v.youtube_url);
+            const thumb = v.thumbnail_url || `https://i.ytimg.com/vi/${videoId}/hqdefault.jpg`;
+            return `
+                <div class="playlist-item" data-video-id="${videoId}" data-title="${v.title}" data-desc="${v.description || ''}">
+                    <img src="${thumb}" alt="${v.title}" onerror="this.src='https://via.placeholder.com/120x68?text=Video'">
+                    <div class="info">
+                        <div class="title">${v.title}</div>
+                        <div class="duration"><i class="fas fa-clock"></i> ${v.duration || 'N/A'}</div>
+                    </div>
+                </div>
+            `;
+        }).join('');
+        
+        container.querySelectorAll('.playlist-item').forEach(item => {
+            item.addEventListener('click', function() {
+                playVideo(this.dataset.videoId, this.dataset.title, this.dataset.desc);
+                container.querySelectorAll('.playlist-item').forEach(i => i.classList.remove('active'));
+                this.classList.add('active');
+            });
+        });
+    }
+
+    function playVideo(videoId, title, desc) {
+        const iframe = document.getElementById('video-frame');
+        const placeholder = document.getElementById('player-placeholder');
+        const infoDiv = document.getElementById('video-info');
+        
+        iframe.src = `https://www.youtube.com/embed/${videoId}?autoplay=1`;
+        iframe.style.display = 'block';
+        placeholder.style.display = 'none';
+        
+        document.getElementById('video-title').textContent = title;
+        document.getElementById('video-description').textContent = desc;
+        infoDiv.style.display = 'block';
+    }
+
+    function renderLiveClasses(classes) {
+        const container = document.getElementById('live-classes-container');
+        
+        if (!classes.length) {
+            container.innerHTML = '<div class="empty-state"><i class="fas fa-video-slash"></i><p>No live classes scheduled</p></div>';
+            return;
+        }
+        
+        container.innerHTML = `<div class="card-grid">${classes.map(c => {
+            const scheduled = c.scheduled_at ? new Date(c.scheduled_at).toLocaleString('en-US', {
+                weekday: 'long', year: 'numeric', month: 'long', day: 'numeric', hour: '2-digit', minute: '2-digit'
+            }) : 'Not scheduled';
+            
+            return `
+                <div class="live-class-card">
+                    ${c.is_active ? '<div class="live-badge">🔴 LIVE</div>' : ''}
+                    <h3 style="font-size:1.3rem; margin-bottom:10px;">${c.title}</h3>
+                    <p style="color:#cbd5e1; margin-bottom:15px;">${c.description || ''}</p>
+                    <p style="color:#94a3b8; font-size:0.9rem;"><i class="fas fa-calendar"></i> ${scheduled}</p>
+                    ${c.meeting_id ? `<p style="color:#94a3b8; font-size:0.85rem; margin-top:10px;">Meeting ID: ${c.meeting_id}</p>` : ''}
+                    ${c.passcode ? `<p style="color:#94a3b8; font-size:0.85rem;">Passcode: ${c.passcode}</p>` : ''}
+                    <a href="${c.zoom_link}" target="_blank" class="zoom-btn"><i class="fas fa-video"></i> Join Class</a>
+                </div>
+            `;
+        }).join('')}</div>`;
+    }
+
+    // ========== INITIALIZE ==========
+    async function init() {
+        const [videos, liveClasses, routines] = await Promise.all([
+            fetchVideos(),
+            fetchLiveClasses(),
+            fetchRoutine()
+        ]);
+        
+        // Group videos by category
+        allVideos = videos;
+        categories = videos.reduce((acc, v) => {
+            const cat = v.category || 'Other';
+            if (!acc[cat]) acc[cat] = [];
+            acc[cat].push(v);
+            return acc;
+        }, {});
+        
+        renderRoutine(routines);
+        renderPlaylistTabs();
+        renderLiveClasses(liveClasses);
+        
+        console.log('EduPlay loaded! Videos:', videos.length, 'Live classes:', liveClasses.length, 'Routine:', routines.length);
+    }
+
+    document.addEventListener('DOMContentLoaded', init);
+    </script>
+</body>
+</html>
